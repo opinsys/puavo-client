@@ -26,6 +26,10 @@ module Puavo
       def users
         Puavo::Client::API::Users.new(subdomain, username, password, ssl)
       end
+
+      def courses
+        Puavo::Client::API::Courses.new(subdomain, username, password, ssl)
+      end
     end
   end
 end
