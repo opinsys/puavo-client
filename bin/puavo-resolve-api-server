@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # ##############################################################################
 #
@@ -22,7 +22,7 @@
 
 set -eu
 
-function usage {
+usage () {
     echo "
     usage: $(basename $0) [option]
 
@@ -41,7 +41,8 @@ OPT_WRITABLE=""
 OPT_CLOUD_FALLBACK=""
 
 TEMP=$(getopt -n $PROGRAM_NAME -o wch \
---long writable,cloud-fallback,help)
+--long writable,cloud-fallback,help \
+-- "$@")
 
 eval set -- "$TEMP"
 while true; do
