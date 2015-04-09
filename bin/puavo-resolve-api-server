@@ -90,6 +90,12 @@ if [ -z "${OPT_WRITABLE}" ]; then
 fi
 
 puavo_hosttype=$(cat /etc/puavo/hosttype)
+puavo_apiserver=""
+
+# Fallback uses API server 
+if [ -s "/etc/puavo/apiserver" ]; then
+  puavo_apiserver=$(cat /etc/puavo/apiserver)
+fi
 
 # Fallback for laptops and wirelessaccesspoints that are not in the school
 # network.
@@ -97,7 +103,11 @@ if [    "$puavo_hosttype" = "laptop"              \
      -o "$puavo_hosttype" = "wirelessaccesspoint" \
      -o -n "${OPT_CLOUD_FALLBACK}"                \
      -o -n "${OPT_WRITABLE}"                        ]; then
-    echo "https://$puavo_domain"
+    if [ -n "${puavo_apiserver}" ]; then
+        echo "https://$puavo_apiserver"
+    else
+        echo "https://$puavo_domain"
+    fi
     exit 0
 fi
 
