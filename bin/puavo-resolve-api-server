@@ -20,11 +20,11 @@
 # ##############################################################################
 #
 
-set -eu
+PROGRAM_NAME="$(basename $0)"
 
 usage () {
     echo "
-    usage: $(basename $0) [option]
+    usage: ${PROGRAM_NAME} [option]
 
     Resolve local puavo api server from dns. If the device type is laptop and
     dns resolve fails it will return the public server.
@@ -35,23 +35,18 @@ usage () {
     "
 }
 
-PROGRAM_NAME=puavo-resolve-api-server
-
 OPT_WRITABLE=""
 OPT_CLOUD_FALLBACK=""
 
-TEMP=$(getopt -n $PROGRAM_NAME -o wch \
---long writable,cloud-fallback,help \
--- "$@")
-
-eval set -- "$TEMP"
 while true; do
     case $1 in
         -w|--writable)
-            OPT_WRITABLE=1; shift; continue
+            OPT_WRITABLE=1
+            shift
         ;;
         -c|--cloud-fallback)
-            OPT_CLOUD_FALLBACK=1; shift; continue
+            OPT_CLOUD_FALLBACK=1
+            shift
         ;;
         -h|--help)
             usage
@@ -60,11 +55,17 @@ while true; do
         --)
             break
         ;;
+        "")
+            break
+        ;;
         *)
             printf "Unknown option %s\n" "$1"
+            shift
         ;;
     esac
 done
+
+set -eu
 
 puavo_domain=$(cat /etc/puavo/domain)
 
