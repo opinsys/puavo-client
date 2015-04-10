@@ -80,11 +80,13 @@ if [ -z "${OPT_WRITABLE}" ]; then
         # dig might not exit with nonzero exit status even if the search fails,
         # instead it will just give an empty response.
         if [ -n "$dig_res" ]; then
-            echo $dig_res | awk '{
-                              sub(/\.$/, "")
-                              printf "https://%s:%s\n", $4, $3
-                            }'
-            exit 0
+            server=$(echo $dig_res | awk '{sub(/\.$/, ""); print $4}')
+            port=$(echo $dig_res | awk '{print $3}')
+
+            if [ "${server%%$puavo_domain}" != "${server}" ]; then
+                echo "https://${server}:${port}"
+                exit 0
+            fi
         fi
     fi
 fi
