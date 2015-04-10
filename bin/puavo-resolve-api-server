@@ -60,7 +60,7 @@ while true; do
         ;;
         *)
             printf "Unknown option %s\n" "$1"
-            shift
+            exit 1
         ;;
     esac
 done
