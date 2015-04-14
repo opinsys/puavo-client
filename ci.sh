@@ -4,12 +4,11 @@
 set -eu
 set -x
 
-sudo apt-get update
-sudo apt-get install -y --force-yes puavo-devscripts aptirepo-upload
 
-puavo-build-debian-dir
-sudo puavo-install-deps debian/control
-puavo-dch $(cat VERSION)
-puavo-debuild
+# Install build dependencies
+sudo make install-build-dep
 
-aptirepo-upload -r $APTIREPO_REMOTE -b "git-$(echo "$GIT_BRANCH" | cut -d / -f 2)" ../puavo-client*.changes
+# Build debian package
+make deb
+
+cp ../puavo-client_* $HOME/results
