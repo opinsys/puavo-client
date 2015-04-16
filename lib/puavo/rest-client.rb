@@ -60,18 +60,21 @@ class PuavoRestClient
       end
 
       verbose("Resolved to bootserver puavo-rest #{ server_host }")
-      return "https://#{ server_host }:443"
+      return Addressable::URI.parse("https://#{ server_host }:443")
   end
 
   def read_apiserver_file
     server = File.open("/etc/puavo/apiserver").read.strip
-    if !server.start_with?("http")
-      raise "/etc/puavo/apiserver must have a protocol prefix"
+    if /^https?:\/\//.match(server)
+      return server
+    else
+      return "https://#{ server }"
     end
   end
 
   def initialize(_options={})
     @options = _options.dup
+    @servers = []
     @headers = {
       "user-agent" => "puavo-rest-client"
     }
@@ -82,42 +85,40 @@ class PuavoRestClient
       @options[:puavo_domain] = File.open("/etc/puavo/domain").read.strip
     end
 
-    # Auto select apiserver if not manually set
-    if @options[:apiserver].nil?
+    if @options[:server]
+      @servers = [
+        :uri => Addressable::URI.parse(@options[:server]),
+        :ssl_context => self.class.public_ssl
+      ]
+    else
 
       if @options[:dns] != :no
         begin
-          @options[:apiserver] = self.class.resolve_apiserver_dns(@options[:puavo_domain])
-          @options[:ssl_context] = self.class.custom_ssl
+          @servers.push({
+            :uri => Addressable::URI.parse(self.class.resolve_apiserver_dns(@options[:puavo_domain])),
+            :ssl_context => self.class.custom_ssl
+          })
         rescue ResolvFail => err
           # Crash if only dns is allowed
           raise err if @options[:dns] == :only
         end
       end
 
-      begin
-        @options[:apiserver] = read_apiserver_file()
-      rescue Errno::ENOENT
+      if @options[:dns] != :only
+        begin
+          @servers.push({
+            :uri => self.class.read_apiserver_file,
+            :ssl_context => self.class.public_ssl
+          })
+        rescue Errno::ENOENT
+          verbose("/etc/puavo/apiserver is missing")
+          @servers.push({
+            :uri => "https://#{ @options[:puavo_domain] }",
+            :ssl_context => self.class.public_ssl
+          })
+        end
       end
-    end
 
-    if @options[:apiserver]
-      uri = Addressable::URI.parse(@options[:apiserver])
-      @options[:scheme] ||= uri.scheme
-      @options[:port] ||= uri.port
-      @options[:server_host] ||= uri.host
-    end
-
-    @options[:scheme] ||= "https"
-
-    if @options[:port].nil?
-      if @options[:scheme] == "https"
-        @options[:port] = 443
-      elsif @options[:scheme] == "http"
-        @options[:port] = 80
-      else
-        raise "Invalid protocol #{ @options[:scheme] }"
-      end
     end
 
     # Set request header to puavo domain. Using this we can make requests to
@@ -126,16 +127,22 @@ class PuavoRestClient
 
 
     # Force usage of custom ca_file if set
-    if @options[:ca_file] && @options[:scheme] == "https"
-      @options[:ssl_context] = self.class.custom_ssl(@options[:ca_file])
+    if @options[:ca_file]
+      @servers.each do |server|
+        server[:ssl_context] = self.class.custom_ssl(@options[:ca_file])
+      end
     end
 
-    # Use puavo domain as the final fallback for server host
-    @options[:server_host] ||= @options[:puavo_domain]
+    if @options[:port]
+      @servers.each do |server|
+        server[:uri].port = @options[:port]
+      end
+    end
 
-    # And public ssl for ssl fallback
-    if @options[:scheme] == "https"
-      @options[:ssl_context] ||= self.class.public_ssl
+    if @options[:scheme]
+      @servers.each do |server|
+        server[:uri].scheme = @options[:scheme]
+      end
     end
 
     if @options[:auth] == :bootserver
@@ -151,13 +158,15 @@ class PuavoRestClient
     end
   end
 
-  def to_full_url(path)
-    "#{ @options[:scheme] }://#{ @options[:server_host] }:#{ @options[:port] }#{ path }"
+  def servers
+    @servers.map{|s| s.to_s}
   end
 
   [:get, :post].each do |method|
     define_method(method) do |path, *options|
+
       url = to_full_url(path)
+
       verbose("#{ method.to_s.upcase } #{ url }")
       res = client.send(method, url, *options)
       verbose("HTTP STATUS #{ res.status }")
