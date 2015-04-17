@@ -54,7 +54,7 @@ test-etc:
 
 .PHONY: test
 test:
-	exit 3
+	exit 5
 
 install-build-dep:
 	mk-build-deps --install debian.default/control \
