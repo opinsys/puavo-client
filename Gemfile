@@ -11,4 +11,5 @@ gem "minitest"
 gem "minitest-stub_any_instance"
 gem "http"
 gem "gssapi"
-gem "debugger"
+# gem "debugger"        # XXX needs some update or something to work with
+                        # XXX ruby2.1 or ruby2.2.
