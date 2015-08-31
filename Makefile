@@ -46,11 +46,11 @@ clean:
 	rm -rf lib/puavo-client-vendor
 
 test-rest-client:
-	bundle exec ruby2.2  -Ilib test/rest_client_test.rb
+	bundle exec ruby2.1  -Ilib test/rest_client_test.rb
 
 
 test-etc:
-	ruby2.2  -Ilib test/etc_test.rb
+	ruby2.1  -Ilib test/etc_test.rb
 
 .PHONY: test
 test: test-rest-client

@@ -92,7 +92,7 @@ Install deps
 
 Test
 
-    ruby2.2 -Ilib/ bin/puavo-rest-client
+    ruby2.1 -Ilib/ bin/puavo-rest-client
 
 Create package
 
