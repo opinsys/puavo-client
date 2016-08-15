@@ -1,49 +1,61 @@
-#!/bin/sh
+#!/usr/bin/ruby
 
-[ "$1" = "--help" -o "$1" = "-h" ] && {
-    echo "
-    usage: $(basename $0) [option]
+require 'puavo'
+require 'dnsruby'
+require 'trollop'
+include Dnsruby
 
-    Resolve local puavo api server from dns. If the device type is laptop and
-    dns resolve fails it will return the public server.
+opts = Trollop::options do
+  banner <<-EOS
 
-    --cloud-fallback       Fallback to cloud puavo-rest if bootserver dns lookup fails
+  Resolve local puavo api server from dns. If the device type is laptop and 
+  dns resolve fails it will return the public server. Prints out the URL 
+  for the puavo-rest server in format https://hostname:port
 
-    "
-} && exit 0
+  Usage: puavo-resolve-api-server [options]
 
-option=$1
+EOS
 
-set -eu
+  opt :cloud_fallback, "Fallback to cloud puavo-rest if bootserver dns lookup fails"
+  opt :timeout, "Timeout in seconds for dns query before returning the cloud fallback server [default=3]", :type => Integer
+  opt :help, "Print help"
+end
 
-puavo_domain=$(cat /etc/puavo/domain)
+if opts[:help]
+  exit
+end
 
-lookup_puavoapi() {
-  dig +time=2 +tries=1 SRV _puavo-api._tcp.${puavo_domain} +search +short
-}
+if !opts[:timeout]
+  opts[:timeout] = 3
+end
 
-if dig_res=$(lookup_puavoapi); then
-    # dig might not exit with nonzero exit status even if the search fails,
-    # instead it will just give an empty response.
-    if [ -n "$dig_res" ]; then
-        echo $dig_res | awk '{
-                          sub(/\.$/, "")
-                          printf "https://%s:%s\n", $4, $3
-                        }'
-        exit 0
-    fi
-fi
+domain = PUAVO_ETC.domain
+hosttype = PUAVO_ETC.hosttype
 
-puavo_hosttype=$(cat /etc/puavo/hosttype)
+if hosttype and (hosttype.eql?("laptop") or hosttype.eql?("wirelessaccesspoint"))
+  opts[:cloud_fallback] = true
+end
 
-# Fallback for laptops and wirelessaccesspoints that are not in the school
-# network.
-if [    "$puavo_hosttype" = "laptop"              \
-     -o "$puavo_hosttype" = "wirelessaccesspoint" \
-     -o "$option"         = "--cloud-fallback" ]; then
-    echo "https://$puavo_domain"
+if !domain
+  STDERR.puts "ERROR: Puavo domain not set!"
+
+  exit 1
+end
+
+res   = Resolver.new(:query_timeout => opts[:timeout])
+
+begin
+  ret = res.query("_puavo-api._tcp.#{domain}", 'SRV')
+
+  ret.answer.rrset("_puavo-api._tcp.#{domain}", Types.SRV).rrs.each do |rr|
+    puts "https://#{rr.target.to_s}:#{rr.port}"
+
     exit 0
-fi
+  end
+rescue
+end
 
-echo "Failed to resolve api server" >&2
-exit 1
+if opts[:cloud_fallback]
+  puts "https://#{domain}"
+  exit 0
+end
