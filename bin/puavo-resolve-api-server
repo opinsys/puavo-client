@@ -19,19 +19,18 @@ set -eu
 puavo_domain=$(cat /etc/puavo/domain)
 
 lookup_puavoapi() {
-  dig +time=2 +tries=1 SRV _puavo-api._tcp.${puavo_domain} +search +short
+  host -t SRV -W 2 "_puavo-api._tcp.${puavo_domain}" \
+    | awk '$2 == "has" && $3 == "SRV" && $4 == "record" {
+        sub(/\.$/, "", $8)
+        printf "https://%s:%s\n", $8, $7
+        exit(0)
+      }'
 }
 
-if dig_res=$(lookup_puavoapi); then
-    # dig might not exit with nonzero exit status even if the search fails,
-    # instead it will just give an empty response.
-    if [ -n "$dig_res" ]; then
-        echo $dig_res | awk '{
-                          sub(/\.$/, "")
-                          printf "https://%s:%s\n", $4, $3
-                        }'
-        exit 0
-    fi
+puavoapi=$(lookup_puavoapi)
+if [ -n "$puavoapi" ]; then
+  echo "$puavoapi"
+  exit 0
 fi
 
 puavo_hosttype=$(cat /etc/puavo/hosttype)
