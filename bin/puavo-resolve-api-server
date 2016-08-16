@@ -69,32 +69,31 @@ set -eu
 
 puavo_domain=$(cat /etc/puavo/domain)
 
-lookup_puavoapi() {
-  dig +time=2 +tries=1 SRV _puavo-api._tcp.${puavo_domain} +search +short
+lookup_puavo_apiserver() {
+  host -t SRV -W 2 "_puavo-api._tcp.${puavo_domain}" \
+    | awk -v puavo_domain="$puavo_domain" '
+        $2 == "has" && $3 == "SRV" && $4 == "record" \
+          && $8 ~ ("\\." puavo_domain "\\.$") {
+            sub(/\.$/, "", $8)
+            printf "https://%s:%s\n", $8, $7
+            exit(0)
+      }'
 }
 
-# At the moment only the cloud API server is writable, so we skip the 
+# At the moment only the cloud API server is writable, so we skip the
 # query and just fallback to cloud server if write access is requested.
 if [ -z "${OPT_WRITABLE}" ]; then
-    if dig_res=$(lookup_puavoapi); then
-        # dig might not exit with nonzero exit status even if the search fails,
-        # instead it will just give an empty response.
-        if [ -n "$dig_res" ]; then
-            server=$(echo $dig_res | awk '{sub(/\.$/, ""); print $4}')
-            port=$(echo $dig_res | awk '{print $3}')
-
-            if [ "${server%%$puavo_domain}" != "${server}" ]; then
-                echo "https://${server}:${port}"
-                exit 0
-            fi
-        fi
+    puavo_apiserver=$(lookup_puavo_apiserver)
+    if [ -n "$puavo_apiserver" ]; then
+        echo "$puavo_apiserver"
+        exit 0
     fi
 fi
 
 puavo_hosttype=$(cat /etc/puavo/hosttype)
 puavo_apiserver=""
 
-# Fallback uses API server 
+# Fallback uses API server
 if [ -s "/etc/puavo/apiserver" ]; then
   puavo_apiserver=$(cat /etc/puavo/apiserver)
 else
