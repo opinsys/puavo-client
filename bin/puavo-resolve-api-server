@@ -96,14 +96,13 @@ if [ -z "${OPT_WRITABLE}" ]; then
 fi
 
 puavo_hosttype=$(cat /etc/puavo/hosttype)
-puavo_apiserver=""
+puavo_apiserver="https://$puavo_domain"
 
+# XXX The effects of this change need to be tested:
 # Fallback uses API server
-if [ -s "/etc/puavo/apiserver" ]; then
-  puavo_apiserver=$(cat /etc/puavo/apiserver)
-else
-  puavo_apiserver="https://$puavo_domain"
-fi
+# if [ -s /etc/puavo/apiserver ]; then
+#   puavo_apiserver=$(cat /etc/puavo/apiserver)
+# fi
 
 # Fallback for laptops and wirelessaccesspoints that are not in the school
 # network.
