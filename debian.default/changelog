@@ -1,3 +1,9 @@
+puavo-client (2.1.1) unstable; urgency=medium
+
+  * Release 2.1.1
+
+ -- Juha Erkkilä <Juha.Erkkila@opinsys.fi>  Thu, 14 Sep 2017 13:06:19 +0300
+
 puavo-client (2.1.0) unstable; urgency=medium
 
   * Release 2.1.0
